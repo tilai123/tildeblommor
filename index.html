@@ -1,1 +1,33 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mobilenetv2-modell från GitHub</title>
+  <!-- TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+</head>
+<body>
+  <h1>Testa TF.js-modell från GitHub</h1>
+  <p>Öppna webbläsarens konsol för att se status.</p>
 
+  <script>
+    // URL till model.json på GitHub (använd RAW-länken)
+    // Exempel: https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/path/to/model.json
+    const MODEL_URL = 'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/path/to/model.json';
+
+    let model;
+
+    async function loadModel() {
+      try {
+        console.log('Laddar modell från:', MODEL_URL);
+        model = await tf.loadLayersModel(MODEL_URL);
+        console.log('Modell laddad:', model);
+      } catch (err) {
+        console.error('Kunde inte ladda modellen:', err);
+      }
+    }
+
+    loadModel();
+  </script>
+</body>
+</html>
