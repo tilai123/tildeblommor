@@ -1,33 +1,140 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-  <meta charset="UTF-8" />
-  <title>Mobilenetv2-modell från GitHub</title>
-  <!-- TensorFlow.js -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TF.js Modell – Soft</title>
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: #f5f7fa;
+            color: #222;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        #preview {
+            margin-top: 20px;
+            max-width: 100%;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .upload-btn {
+            margin-top: 20px;
+            padding: 12px 20px;
+            background: #4a6cf7;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+
+        .upload-btn:hover {
+            background: #3b57d6;
+        }
+
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+    </style>
 </head>
+
 <body>
-  <h1>Testa TF.js-modell från GitHub</h1>
-  <p>Öppna webbläsarens konsol för att se status.</p>
 
-  <script>
-    // URL till model.json på GitHub (använd RAW-länken)
-    // Exempel: https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/path/to/model.json
-    const MODEL_URL = 'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/path/to/model.json';
+    <h1>TensorFlow.js Modell</h1>
+    <div class="card">
+        <p>Modellen laddas automatiskt från GitHub. Ladda upp en bild för att testa.</p>
 
-    let model;
+        <input type="file" id="imageUpload" accept="image/*" class="upload-btn" />
+        <img id="preview" />
 
-    async function loadModel() {
-      try {
-        console.log('Laddar modell från:', MODEL_URL);
-        model = await tf.loadLayersModel(MODEL_URL);
-        console.log('Modell laddad:', model);
-      } catch (err) {
-        console.error('Kunde inte ladda modellen:', err);
-      }
-    }
+        <div id="result"></div>
+    </div>
 
-    loadModel();
-  </script>
+    <script>
+        const MODEL_URL =
+            "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/tfjs_model/model.json";
+
+        let model;
+
+        async function loadModel() {
+            console.log("Laddar modell från:", MODEL_URL);
+            try {
+                model = await tf.loadLayersModel(MODEL_URL);
+                console.log("Modell laddad:", model);
+            } catch (err) {
+                console.error("Fel vid laddning av modellen:", err);
+            }
+        }
+
+        loadModel();
+
+        // Bilduppladdning
+        const upload = document.getElementById("imageUpload");
+        const preview = document.getElementById("preview");
+        const resultBox = document.getElementById("result");
+
+        upload.addEventListener("change", async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = "block";
+
+            await new Promise(r => setTimeout(r, 100)); // Vänta tills bilden visas
+
+            const prediction = await runPrediction(preview);
+            resultBox.textContent = "Prediktion: " + prediction;
+        });
+
+        async function runPrediction(img) {
+            if (!model) return "Modellen är inte laddad ännu.";
+
+            const tensor = tf.browser.fromPixels(img)
+                .resizeNearestNeighbor([224, 224])
+                .toFloat()
+                .div(127.5)
+                .sub(1)
+                .expandDims();
+
+            const output = model.predict(tensor);
+            const data = await output.data();
+
+            console.log("Prediktionsdata:", data);
+
+            return JSON.stringify(data);
+        }
+    </script>
+
 </body>
 </html>
