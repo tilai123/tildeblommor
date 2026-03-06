@@ -1,140 +1,167 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TF.js Modell – Soft</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blomidentifierare 🌸</title>
 
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 
-    <!-- TensorFlow.js -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<style>
 
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-            background: #f5f7fa;
-            color: #222;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 40px 20px;
-        }
+body{
+font-family: Arial, Helvetica, sans-serif;
+background: linear-gradient(135deg,#6dd5ed,#2193b0);
+margin:0;
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+color:white;
+}
 
-        h1 {
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
+.container{
+background:white;
+color:#333;
+padding:40px;
+border-radius:20px;
+box-shadow:0 20px 40px rgba(0,0,0,0.2);
+text-align:center;
+width:420px;
+}
 
-        .card {
-            background: white;
-            padding: 30px;
-            border-radius: 14px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
-        }
+h1{
+margin-bottom:20px;
+}
 
-        #preview {
-            margin-top: 20px;
-            max-width: 100%;
-            border-radius: 10px;
-            display: none;
-        }
+input{
+margin-top:15px;
+}
 
-        .upload-btn {
-            margin-top: 20px;
-            padding: 12px 20px;
-            background: #4a6cf7;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: 0.2s;
-        }
+button{
+margin-top:20px;
+padding:12px 25px;
+border:none;
+border-radius:10px;
+background:#2193b0;
+color:white;
+font-size:16px;
+cursor:pointer;
+transition:0.3s;
+}
 
-        .upload-btn:hover {
-            background: #3b57d6;
-        }
+button:hover{
+background:#176f85;
+}
 
-        #result {
-            margin-top: 20px;
-            font-size: 18px;
-            font-weight: 600;
-        }
-    </style>
+img{
+margin-top:20px;
+max-width:100%;
+border-radius:12px;
+}
+
+.result{
+margin-top:20px;
+font-size:20px;
+font-weight:bold;
+}
+
+.loading{
+margin-top:10px;
+font-size:14px;
+color:gray;
+}
+
+</style>
 </head>
 
 <body>
 
-    <h1>TensorFlow.js Modell</h1>
-    <div class="card">
-        <p>Modellen laddas automatiskt från GitHub. Ladda upp en bild för att testa.</p>
+<div class="container">
 
-        <input type="file" id="imageUpload" accept="image/*" class="upload-btn" />
-        <img id="preview" />
+<h1>🌸 Blomidentifierare</h1>
 
-        <div id="result"></div>
-    </div>
+<p>Ladda upp en bild på en blomma</p>
 
-    <script>
-        const MODEL_URL =
-            "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/tfjs_model/model.json";
+<input type="file" id="imageUpload" accept="image/*">
 
-        let model;
+<br>
 
-        async function loadModel() {
-            console.log("Laddar modell från:", MODEL_URL);
-            try {
-                model = await tf.loadLayersModel(MODEL_URL);
-                console.log("Modell laddad:", model);
-            } catch (err) {
-                console.error("Fel vid laddning av modellen:", err);
-            }
-        }
+<button onclick="predict()">Identifiera blomma</button>
 
-        loadModel();
+<div class="loading" id="loading"></div>
 
-        // Bilduppladdning
-        const upload = document.getElementById("imageUpload");
-        const preview = document.getElementById("preview");
-        const resultBox = document.getElementById("result");
+<img id="preview">
 
-        upload.addEventListener("change", async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+<div class="result" id="result"></div>
 
-            preview.src = URL.createObjectURL(file);
-            preview.style.display = "block";
+</div>
 
-            await new Promise(r => setTimeout(r, 100)); // Vänta tills bilden visas
+<script>
 
-            const prediction = await runPrediction(preview);
-            resultBox.textContent = "Prediktion: " + prediction;
-        });
+let model;
 
-        async function runPrediction(img) {
-            if (!model) return "Modellen är inte laddad ännu.";
+const classNames = [
+"daisy",
+"dandelion",
+"rose",
+"sunflower",
+"tulip"
+];
 
-            const tensor = tf.browser.fromPixels(img)
-                .resizeNearestNeighbor([224, 224])
-                .toFloat()
-                .div(127.5)
-                .sub(1)
-                .expandDims();
+async function loadModel(){
+document.getElementById("loading").innerText="Laddar AI-modell...";
+model = await tf.loadLayersModel("model.json");
+document.getElementById("loading").innerText="Modellen laddad ✔";
+}
 
-            const output = model.predict(tensor);
-            const data = await output.data();
+loadModel();
 
-            console.log("Prediktionsdata:", data);
+document.getElementById("imageUpload").addEventListener("change",function(event){
 
-            return JSON.stringify(data);
-        }
-    </script>
+const reader = new FileReader();
+
+reader.onload = function(){
+document.getElementById("preview").src = reader.result;
+}
+
+reader.readAsDataURL(event.target.files[0]);
+
+});
+
+async function predict(){
+
+const img = document.getElementById("preview");
+
+if(!img.src){
+alert("Ladda upp en bild först");
+return;
+}
+
+document.getElementById("loading").innerText="Analyserar bild...";
+
+let tensor = tf.browser.fromPixels(img)
+.resizeNearestNeighbor([224,224])
+.toFloat()
+.div(255)
+.expandDims();
+
+let prediction = await model.predict(tensor).data();
+
+let max = Math.max(...prediction);
+let index = prediction.indexOf(max);
+
+let flower = classNames[index];
+let confidence = (max*100).toFixed(2);
+
+document.getElementById("result").innerHTML =
+`🌼 Resultat: <b>${flower}</b><br> Säkerhet: ${confidence}%`;
+
+document.getElementById("loading").innerText="";
+
+}
+
+</script>
 
 </body>
 </html>
