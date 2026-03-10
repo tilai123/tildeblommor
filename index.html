@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blomsterigenkänning - Tilde NA23A</title>
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --success-color: #2ecc71;
+            --bg-color: #f5f7fa;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        header {
+            margin-bottom: 2rem;
+        }
+
+        h1 { margin: 0; color: var(--primary-color); font-weight: 600; }
+        .subtitle { color: #777; font-size: 0.9rem; margin-top: 0.5rem; }
+
+        /* Informationsruta för status */
+        #status-box {
+            background-color: #eee;
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+            border-left: 5px solid #ccc;
+        }
+        .loaded { border-left-color: var(--success-color) !important; color: #155724; }
+
+        #image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin-top: 1rem;
+            display: none;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            padding: 2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: border 0.3s ease;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-area:hover { border-color: var(--primary-color); }
+
+        #prediction-result {
+            margin-top: 1.5rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        footer {
+            margin-top: 2rem;
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Blomdetektorn</h1>
+        <div class="subtitle">Skapad av <strong>Tilde</strong> i klass <strong>NA23A</strong></div>
+    </header>
+
+    <div id="status-box">Laddar modell...</div>
+
+    <label for="image-upload" class="upload-area" id="drop-zone">
+        <p>Klicka här eller dra in en bild på en blomma</p>
+        <input type="file" id="image-upload" accept="image/*">
+    </label>
+
+    <img id="image-preview" src="#" alt="Förhandsvisning">
+    <div id="prediction-result"></div>
+
+    <footer>
+        Utvecklad för gymnasiearbete &copy; 2024
+    </footer>
+</div>
+
+<script>
+    let model;
+    // Här definierar du namnen på de blomarter din modell är tränad på (i rätt ordning)
+    const FLOWER_LABELS = ["Ros", "Solros", "Tulpan", "Prästkrage", "Maskros"]; 
+
+    const statusBox = document.getElementById('status-box');
+    const imageUpload = document.getElementById('image-upload');
+    const imagePreview = document.getElementById('image-preview');
+    const predictionResult = document.getElementById('prediction-result');
+
+    // 1. Ladda modellen från mappen tfjs_model
+    async function init() {
+        try {
+            // Sökvägen pekar på din Github-mappstruktur
+            model = await tf.loadLayersModel('tfjs_model/model.json');
+            statusBox.innerText = "Modellen är laddad och redo!";
+            statusBox.classList.add('loaded');
+        } catch (error) {
+            statusBox.innerText = "Fel vid laddning av modell: " + error.message;
+            console.error(error);
+        }
+    }
+
+    // 2. Hantera bilduppladdning
+    imageUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                imagePreview.src = event.target.result;
+                imagePreview.style.display = 'block';
+                // Vänta tills bilden laddats i DOM:en innan analys
+                imagePreview.onload = () => predict();
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // 3. Utför analysen (Prediction)
+    async function predict() {
+        if (!model) return;
+
+        statusBox.innerText = "Analyserar bild...";
+        
+        // Förbearbeta bilden för att matcha modellens input (224x224 enligt model.json)
+        const tensor = tf.browser.fromPixels(imagePreview)
+            .resizeNearestNeighbor([224, 224])
+            .toFloat()
+            .div(tf.scalar(255.0)) // Normalisering
+            .expandDims();
+
+        const predictions = await model.predict(tensor).data();
+        
+        // Hitta högsta sannolikhet
+        let topProb = 0;
+        let classIdx = 0;
+        predictions.forEach((prob, i) => {
+            if (prob > topProb) {
+                topProb = prob;
+                classIdx = i;
+            }
+        });
+
+        const flowerName = FLOWER_LABELS[classIdx] || "Okänd art";
+        const probability = (topProb * 100).toFixed(2);
+
+        predictionResult.innerHTML = `
+            Art: ${flowerName}<br>
+            <span style="font-size: 0.9rem; color: #777;">Sannolikhet: ${probability}%</span>
+        `;
+        statusBox.innerText = "Analys klar!";
+    }
+
+    init();
+</script>
+
+</body>
+</html>
