@@ -3,187 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blomsterigenkänning - Tilde NA23A</title>
-    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600&display=swap" rel="stylesheet">
+    <title>Blomidentifiering - Tilde NA23A</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <style>
         :root {
             --primary-color: #4a90e2;
-            --success-color: #2ecc71;
-            --bg-color: #f5f7fa;
+            --accent-color: #f39c12;
+            --bg-color: #f0f2f5;
             --card-bg: #ffffff;
+            --text-main: #2c3e50;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background-color: var(--bg-color);
+            color: var(--text-main);
             margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            color: #333;
         }
 
-        .container {
-            background-color: var(--card-bg);
+        .card {
+            background: var(--card-bg);
             padding: 2.5rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
             width: 100%;
-            max-width: 500px;
+            max-width: 450px;
             text-align: center;
         }
 
-        header {
-            margin-bottom: 2rem;
-        }
+        h1 { margin-bottom: 5px; color: var(--text-main); }
+        .subtitle { color: #7f8c8d; margin-bottom: 30px; font-weight: 500; }
 
-        h1 { margin: 0; color: var(--primary-color); font-weight: 600; }
-        .subtitle { color: #777; font-size: 0.9rem; margin-top: 0.5rem; }
-
-        /* Informationsruta för status */
-        #status-box {
-            background-color: #eee;
-            padding: 0.8rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            font-size: 0.85rem;
-            border-left: 5px solid #ccc;
+        /* Statusruta */
+        #status-container {
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
         }
-        .loaded { border-left-color: var(--success-color) !important; color: #155724; }
+        .status-loading { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .status-ready { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+        /* Uppladdningsknapp */
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            padding: 30px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: border 0.3s;
+            margin-bottom: 20px;
+        }
+        .upload-area:hover { border-color: var(--primary-color); }
 
         #image-preview {
             max-width: 100%;
-            max-height: 300px;
-            border-radius: 10px;
-            margin-top: 1rem;
+            border-radius: 12px;
             display: none;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-top: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
-        .upload-area {
-            border: 2px dashed #cbd5e0;
-            padding: 2rem;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: border 0.3s ease;
-            margin-bottom: 1.5rem;
+        .result-box {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            display: none;
+            animation: fadeIn 0.5s ease;
         }
 
-        .upload-area:hover { border-color: var(--primary-color); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        #prediction-result {
-            margin-top: 1.5rem;
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--primary-color);
-        }
-
-        footer {
-            margin-top: 2rem;
-            font-size: 0.8rem;
-            color: #999;
-        }
-
-        input[type="file"] { display: none; }
+        .flower-name { font-size: 1.5rem; font-weight: bold; color: var(--primary-color); display: block; }
+        .confidence-bar { height: 8px; background: #eee; border-radius: 4px; margin-top: 10px; overflow: hidden; }
+        .confidence-fill { height: 100%; background: var(--accent-color); width: 0%; transition: width 0.5s ease; }
     </style>
 </head>
 <body>
 
-<div class="container">
+<div class="card">
     <header>
-        <h1>Blomdetektorn</h1>
-        <div class="subtitle">Skapad av <strong>Tilde</strong> i klass <strong>NA23A</strong></div>
+        <h1>Blom-AI</h1>
+        <p class="subtitle">Tilde | NA23A</p>
     </header>
 
-    <div id="status-box">Laddar modell...</div>
+    <div id="status-container" class="status-loading">
+        ⏳ Laddar modell...
+    </div>
 
-    <label for="image-upload" class="upload-area" id="drop-zone">
-        <p>Klicka här eller dra in en bild på en blomma</p>
-        <input type="file" id="image-upload" accept="image/*">
-    </label>
+    <div class="upload-area" onclick="document.getElementById('file-input').click()">
+        <p>Klicka för att ladda upp en bild på en blomma</p>
+        <input type="file" id="file-input" hidden accept="image/*">
+        <img id="image-preview" src="">
+    </div>
 
-    <img id="image-preview" src="#" alt="Förhandsvisning">
-    <div id="prediction-result"></div>
-
-    <footer>
-        Utvecklad för gymnasiearbete &copy; 2024
-    </footer>
+    <div id="result-area" class="result-box">
+        <span style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">Identifierad art:</span>
+        <span id="label-text" class="flower-name">-</span>
+        <p style="margin: 15px 0 5px 0;">Sannolikhet: <span id="conf-text">0%</span></p>
+        <div class="confidence-bar"><div id="conf-fill" class="confidence-fill"></div></div>
+    </div>
 </div>
 
 <script>
     let model;
-    // Här definierar du namnen på de blomarter din modell är tränad på (i rätt ordning)
-    const FLOWER_LABELS = ["Ros", "Solros", "Tulpan", "Prästkrage", "Maskros"]; 
+    // Arterna i den ordning modellen förväntar sig dem
+    const LABELS = ['Daisy', 'Dandelion', 'Roses', 'Sunflowers', 'Tulips'];
 
-    const statusBox = document.getElementById('status-box');
-    const imageUpload = document.getElementById('image-upload');
-    const imagePreview = document.getElementById('image-preview');
-    const predictionResult = document.getElementById('prediction-result');
-
-    // 1. Ladda modellen från mappen tfjs_model
     async function init() {
+        const statusBox = document.getElementById('status-container');
         try {
-            // Sökvägen pekar på din Github-mappstruktur
+            // Laddar modellen från mappen tfjs_model
             model = await tf.loadLayersModel('tfjs_model/model.json');
-            statusBox.innerText = "Modellen är laddad och redo!";
-            statusBox.classList.add('loaded');
-        } catch (error) {
-            statusBox.innerText = "Fel vid laddning av modell: " + error.message;
-            console.error(error);
+            statusBox.innerHTML = "✅ Modellen är redo!";
+            statusBox.className = "status-ready";
+        } catch (e) {
+            statusBox.innerHTML = "❌ Fel: Kunde inte ladda modellen";
+            console.error(e);
         }
     }
 
-    // 2. Hantera bilduppladdning
-    imageUpload.addEventListener('change', (e) => {
+    document.getElementById('file-input').addEventListener('change', async (e) => {
         const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                imagePreview.src = event.target.result;
-                imagePreview.style.display = 'block';
-                // Vänta tills bilden laddats i DOM:en innan analys
-                imagePreview.onload = () => predict();
-            };
-            reader.readAsDataURL(file);
-        }
+        if (!file) return;
+
+        const imgElement = document.getElementById('image-preview');
+        imgElement.src = URL.createObjectURL(file);
+        imgElement.style.display = 'block';
+
+        imgElement.onload = async () => {
+            if (!model) return;
+
+            // Bildbehandling för att passa MobileNetV2 (224x224)
+            const tensor = tf.browser.fromPixels(imgElement)
+                .resizeNearestNeighbor([224, 224])
+                .toFloat()
+                .div(tf.scalar(255)) // Normalisering 0-1
+                .expandDims();
+
+            const prediction = await model.predict(tensor).data();
+            const maxIdx = tf.argMax(prediction).dataSync()[0];
+            const confidence = prediction[maxIdx];
+
+            // Uppdatera UI
+            document.getElementById('result-area').style.display = 'block';
+            document.getElementById('label-text').innerText = LABELS[maxIdx];
+            document.getElementById('conf-text').innerText = (confidence * 100).toFixed(1) + "%";
+            document.getElementById('conf-fill').style.width = (confidence * 100) + "%";
+        };
     });
-
-    // 3. Utför analysen (Prediction)
-    async function predict() {
-        if (!model) return;
-
-        statusBox.innerText = "Analyserar bild...";
-        
-        // Förbearbeta bilden för att matcha modellens input (224x224 enligt model.json)
-        const tensor = tf.browser.fromPixels(imagePreview)
-            .resizeNearestNeighbor([224, 224])
-            .toFloat()
-            .div(tf.scalar(255.0)) // Normalisering
-            .expandDims();
-
-        const predictions = await model.predict(tensor).data();
-        
-        // Hitta högsta sannolikhet
-        let topProb = 0;
-        let classIdx = 0;
-        predictions.forEach((prob, i) => {
-            if (prob > topProb) {
-                topProb = prob;
-                classIdx = i;
-            }
-        });
-
-        const flowerName = FLOWER_LABELS[classIdx] || "Okänd art";
-        const probability = (topProb * 100).toFixed(2);
-
-        predictionResult.innerHTML = `
-            Art: ${flowerName}<br>
-            <span style="font-size: 0.9rem; color: #777;">Sannolikhet: ${probability}%</span>
-        `;
-        statusBox.innerText = "Analys klar!";
-    }
 
     init();
 </script>
